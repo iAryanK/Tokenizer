@@ -9,7 +9,26 @@ export default function TokenLaunchpad() {
     const wallet = useWallet();
 
     async function createToken() {
-        console.log('Creating token...');
+        const mintKeypair = Keypair.generate();
+        const lamports = await getMinimumBalanceForRentExemptMint(connection);
+
+        const transaction = new Transaction().add(
+            SystemProgram.createAccount({
+                fromPubkey: wallet.publicKey,
+                newAccountPubkey: mintKeypair.publicKey,
+                space: MINT_SIZE,
+                lamports,
+                programId: TOKEN_PROGRAM_ID,
+            }),
+            createInitializeMint2Instruction(mintKeypair.publicKey, 9, wallet.publicKey, wallet.publicKey, TOKEN_PROGRAM_ID)
+        );
+
+        transaction.feePayer = wallet.publicKey;
+        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+        transaction.partialSign(mintKeypair);
+
+        await wallet.sendTransaction(transaction, connection);
+        alert(`Token mint created at ${mintKeypair.publicKey.toBase58()}`);
     }
 
     return <div className="h-96 w-80 max-sm:w-[22rem] bg-white text-black shadow-2xl rounded-xl relative flex flex-col items-center">
